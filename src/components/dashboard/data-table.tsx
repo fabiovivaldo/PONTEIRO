@@ -24,10 +24,9 @@ import {
   Filter,
   Download
 } from "lucide-react";
-import { PonteiroData, exportToCSV } from "@/lib/data-service";
+import { PonteiroData, exportToCSV, ViewMode } from "@/lib/data-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from '@/lib/utils';
-import { ViewMode } from './dashboard-content';
 
 interface DataTableProps {
   liveData: PonteiroData[];

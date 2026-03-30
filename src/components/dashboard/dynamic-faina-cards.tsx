@@ -2,11 +2,10 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { PonteiroData } from '@/lib/data-service';
+import { PonteiroData, ViewMode } from '@/lib/data-service';
 import { Card } from '@/components/ui/card';
 import { WifiOff, Sparkles, Cloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ViewMode } from './dashboard-content';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 

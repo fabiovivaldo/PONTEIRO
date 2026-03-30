@@ -21,7 +21,30 @@ export function AuthForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    let loginEmail = email;
+
+    // Se não for um formato de e-mail (não contém @), tentamos buscar pela matrícula
+    if (!email.includes('@')) {
+      const { data, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('matricula', email)
+        .single();
+
+      if (profileError || !data) {
+        toast({
+          title: "Erro no login",
+          description: "Matrícula não encontrada ou inválida.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      loginEmail = data.email;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     if (error) {
       toast({
         title: "Erro no login",
@@ -117,11 +140,11 @@ export function AuthForm() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest opacity-70">E-mail</Label>
+                  <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest opacity-70">E-mail ou Matrícula</Label>
                   <Input 
                     id="email" 
-                    type="email" 
-                    placeholder="seu@email.com" 
+                    type="text" 
+                    placeholder="seu@email.com ou 00000" 
                     required 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
