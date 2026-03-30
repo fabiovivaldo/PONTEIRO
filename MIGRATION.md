@@ -7,41 +7,6 @@ Para concluir a migração, siga os passos abaixo no seu painel do Supabase:
 Execute o seguinte SQL no **SQL Editor** do Supabase:
 
 ```sql
--- Criar a tabela de ponteiros
-CREATE TABLE IF NOT EXISTS ponteiros (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "Data_Turno" TEXT NOT NULL,
-    "Funcao" TEXT NOT NULL,
-    "Sinal" TEXT,
-    "Original_1" TEXT,
-    "Temporario_1" TEXT,
-    "Original_2" TEXT,
-    "Temporario_2" TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    
-    -- Garantir que não existam duplicatas para a mesma função no mesmo turno
-    UNIQUE("Funcao", "Data_Turno")
-);
-
--- Habilitar Row Level Security (RLS)
-ALTER TABLE ponteiros ENABLE ROW LEVEL SECURITY;
-
--- Criar política para leitura pública (ou autenticada)
-CREATE POLICY "Permitir leitura pública de ponteiros" 
-ON ponteiros FOR SELECT 
-USING (true);
-
--- Criar política para inserção/update (apenas via service role ou se desejar permitir via anon key com restrições)
--- Por segurança, recomenda-se usar service role para o sync, mas para testes:
-CREATE POLICY "Permitir upsert anônimo para sincronização" 
-ON ponteiros FOR ALL 
-USING (true) 
-WITH CHECK (true);
-
--- ===============================================================
--- SISTEMA DE USUÁRIOS E CONFIGURAÇÕES
--- ===============================================================
-
 -- 1. Tabela de Perfis (Usuários)
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -61,13 +26,43 @@ CREATE TABLE IF NOT EXISTS user_settings (
     UNIQUE(user_id)
 );
 
--- 3. Habilitar RLS
+-- 3. Criar a tabela de ponteiros
+CREATE TABLE IF NOT EXISTS ponteiros (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    data_turno TEXT NOT NULL,
+    turno TEXT NOT NULL, -- Identificador do período (ex: 07X13)
+    funcao TEXT NOT NULL,
+    sinal TEXT,
+    original_1 TEXT,
+    temporario_1 TEXT,
+    original_2 TEXT,
+    temporario_2 TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+    
+    -- NOTA: A restrição UNIQUE foi removida para permitir múltiplas linhas da mesma função no mesmo turno.
+    -- A lógica de substituição de tabela é gerenciada pela aplicação (delete + insert por turno).
+);
+
+-- 4. Habilitar Row Level Security (RLS)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ponteiros ENABLE ROW LEVEL SECURITY;
 
--- 4. Políticas de Acesso (Simples para o protótipo)
+-- 5. Políticas de Acesso (Simples para o protótipo)
 CREATE POLICY "Acesso público aos perfis" ON profiles FOR ALL USING (true);
 CREATE POLICY "Acesso público às configurações" ON user_settings FOR ALL USING (true);
+
+-- Criar política para leitura (apenas o próprio usuário)
+CREATE POLICY "Usuários podem ver seus próprios ponteiros" 
+ON ponteiros FOR SELECT 
+USING (true); -- Permitir leitura pública para o protótipo (ajuste conforme necessário)
+
+-- Criar política para inserção/update
+CREATE POLICY "Usuários podem gerenciar seus próprios ponteiros" 
+ON ponteiros FOR ALL 
+USING (true)
+WITH CHECK (true); -- Permitir gerenciamento público para o protótipo (ajuste conforme necessário)
 ```
 
 ## 2. Configurar Variáveis de Ambiente

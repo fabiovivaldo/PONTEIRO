@@ -19,14 +19,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface DashboardContentProps {
-  initialData: PonteiroData[];
+  liveData: PonteiroData[];
+  historyData: PonteiroData[];
   lastUpdatedIso: string;
   uniqueFainas: string[];
 }
 
 export type ViewMode = 'live' | 'Manhã' | 'Tarde' | 'Noite' | 'Madrugada';
 
-export function DashboardContent({ initialData, lastUpdatedIso, uniqueFainas }: DashboardContentProps) {
+export function DashboardContent({ liveData, historyData, lastUpdatedIso, uniqueFainas }: DashboardContentProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('live');
 
   return (
@@ -73,7 +74,7 @@ export function DashboardContent({ initialData, lastUpdatedIso, uniqueFainas }: 
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Minhas Fainas Prioritárias</h3>
             <div className="h-px flex-1 bg-border/50"></div>
           </div>
-          <DynamicFainaCards scrapedData={initialData} selectedShift={viewMode} />
+          <DynamicFainaCards scrapedData={liveData} historyData={historyData} selectedShift={viewMode} />
         </section>
 
         <section className="space-y-6">
@@ -82,7 +83,7 @@ export function DashboardContent({ initialData, lastUpdatedIso, uniqueFainas }: 
               <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Explorador de Registros por Faina</h3>
             </div>
-            <PonteiroDataTable liveData={initialData} viewMode={viewMode} setViewMode={setViewMode} />
+            <PonteiroDataTable liveData={liveData} historyData={historyData} viewMode={viewMode} setViewMode={setViewMode} />
           </div>
         </section>
       </div>

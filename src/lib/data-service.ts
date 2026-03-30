@@ -5,13 +5,14 @@ import { supabase } from './supabase';
  */
 export interface PonteiroData {
   id?: string;
-  Data_Turno: string;
-  Funcao: string;
-  Sinal: string;
-  Original_1: string;
-  Temporario_1: string;
-  Original_2: string;
-  Temporario_2: string;
+  data_turno: string;
+  turno?: string; // Adicionado para identificar o período (ex: 07X13)
+  funcao: string;
+  sinal: string;
+  original_1: string;
+  temporario_1: string;
+  original_2: string;
+  temporario_2: string;
   created_at?: string;
 }
 
@@ -48,30 +49,47 @@ export async function fetchPonteiroData(): Promise<PonteiroData[]> {
     
     const html = await response.text();
     
-    // Extrai a Data e o Turno (H3)
-    const datePattern = /<h3>(.*?)<\/h3>/i;
-    const dateMatch = datePattern.exec(html);
+    // Tenta encontrar a data/turno no cabeçalho da tabela (geralmente em H3 ou em uma célula com classe 'titulo')
+    const dateMatch = html.match(/<h3>(.*?)<\/h3>/i) || 
+                     html.match(/<td[^>]*class=["']?titulo["']?[^>]*>(.*?)<\/td>/i) ||
+                     html.match(/<td[^>]*bgcolor=["']?#E6E6E6["']?[^>]*>(.*?)<\/td>/i);
+    
     const headerDataRaw = dateMatch ? dateMatch[1].trim() : "Sem Data";
     let headerData = decodeHtmlEntities(headerDataRaw);
 
-    // Regex para capturar as linhas da tabela
-    const pattern = /<tr>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<\/tr>/gi;
+    // Regex mais robusto para capturar as linhas da tabela
+    // Captura <tr>...</tr> e extrai o conteúdo de cada <td>
+    const rowPattern = /<tr[^>]*>(.*?)<\/tr>/gis;
+    const cellPattern = /<td[^>]*>(.*?)<\/td>/gis;
     
     const data: PonteiroData[] = [];
-    let match;
+    let rowMatch;
     
-    while ((match = pattern.exec(html)) !== null) {
-      const col1 = decodeHtmlEntities(match[1].trim());
-      // Filtra o cabeçalho da tabela se necessário
-      if (col1 && col1 !== "Lista" && !col1.includes("Função")) {
+    // Extrai o período do cabeçalho (ex: 07X13)
+    const shiftMatch = headerData.match(/\((.*?)\)/);
+    const turnoIdentificador = shiftMatch ? shiftMatch[1] : "REAL";
+
+    while ((rowMatch = rowPattern.exec(html)) !== null) {
+      const rowHtml = rowMatch[1];
+      const cells: string[] = [];
+      let cellMatch;
+      
+      while ((cellMatch = cellPattern.exec(rowHtml)) !== null) {
+        cells.push(decodeHtmlEntities(cellMatch[1].trim()));
+      }
+
+      // Uma linha válida de ponteiro tem exatamente 6 colunas
+      // Ignora o cabeçalho ("Função", "Sinal", etc.)
+      if (cells.length === 6 && cells[0] !== "Função" && !cells[0].includes("Lista")) {
         data.push({
-          Data_Turno: headerData,
-          Funcao: col1,
-          Sinal: match[2].trim(),
-          Original_1: match[3].trim(),
-          Temporario_1: match[4].trim(),
-          Original_2: match[5].trim(),
-          Temporario_2: match[6].trim(),
+          data_turno: headerData,
+          turno: turnoIdentificador,
+          funcao: cells[0],
+          sinal: cells[1],
+          original_1: cells[2],
+          temporario_1: cells[3],
+          original_2: cells[4],
+          temporario_2: cells[5]
         });
       }
     }
@@ -127,24 +145,39 @@ export async function syncPonteiroDataToSupabase(userId: string): Promise<void> 
     const scrapedData = await fetchPonteiroData();
     if (scrapedData.length === 0) return;
 
-    const { error } = await supabase
+    const turnoIdentificador = scrapedData[0].turno;
+    if (!turnoIdentificador) return;
+
+    // 1. Remove todos os registros antigos deste usuário para este turno específico
+    // Isso garante que a nova tabela substitua completamente a anterior (mesmo que tenha menos linhas)
+    const { error: deleteError } = await supabase
       .from('ponteiros')
-      .upsert(
+      .delete()
+      .eq('user_id', userId)
+      .eq('turno', turnoIdentificador);
+
+    if (deleteError) throw deleteError;
+
+    // 2. Insere os novos registros
+    const { error: insertError } = await supabase
+      .from('ponteiros')
+      .insert(
         scrapedData.map(item => ({
           user_id: userId,
-          Data_Turno: item.Data_Turno,
-          Funcao: item.Funcao,
-          Sinal: item.Sinal,
-          Original_1: item.Original_1,
-          Temporario_1: item.Temporario_1,
-          Original_2: item.Original_2,
-          Temporario_2: item.Temporario_2
-        })),
-        { onConflict: 'user_id,Funcao,Data_Turno' }
+          data_turno: item.data_turno,
+          turno: item.turno,
+          funcao: item.funcao,
+          sinal: item.sinal,
+          original_1: item.original_1,
+          temporario_1: item.temporario_1,
+          original_2: item.original_2,
+          temporario_2: item.temporario_2,
+          created_at: new Date().toISOString()
+        }))
       );
 
-    if (error) throw error;
-    console.log("Sincronização individual concluída.");
+    if (insertError) throw insertError;
+    console.log(`Sincronização concluída: Tabela do turno ${turnoIdentificador} substituída.`);
   } catch (error: any) {
     console.error("Supabase sync error:", error?.message || error);
   }

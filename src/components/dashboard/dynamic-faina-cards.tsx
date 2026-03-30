@@ -11,6 +11,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 
 interface DynamicFainaCardsProps {
   scrapedData: PonteiroData[];
+  historyData?: PonteiroData[];
   selectedShift?: ViewMode;
 }
 
@@ -52,10 +53,10 @@ function calculateDistance(
   }
 }
 
-export function DynamicFainaCards({ scrapedData, selectedShift = 'live' }: DynamicFainaCardsProps) {
+export function DynamicFainaCards({ scrapedData, historyData: externalHistory, selectedShift = 'live' }: DynamicFainaCardsProps) {
   const { user, settings } = useAuth();
   const [preferences, setPreferences] = useState<any[]>([]);
-  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [localHistoryData, setLocalHistoryData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export function DynamicFainaCards({ scrapedData, selectedShift = 'live' }: Dynam
       }
 
       const savedHistory = localStorage.getItem('ponteiro_history');
-      if (savedHistory) setHistoryData(JSON.parse(savedHistory));
+      if (savedHistory) setLocalHistoryData(JSON.parse(savedHistory));
       
       setIsLoading(false);
     };
@@ -84,13 +85,52 @@ export function DynamicFainaCards({ scrapedData, selectedShift = 'live' }: Dynam
     };
   }, [user, settings]);
 
+  // Unifica o histórico local (camelCase) com o externo (snake_case)
+  const combinedHistory = useMemo(() => {
+    const historyMap = new Map<string, any>();
+    
+    // Adiciona local primeiro (camelCase)
+    localHistoryData.forEach(item => {
+      const key = `${item.funcao}_${item.turno}`;
+      historyMap.set(key, {
+        funcao: item.funcao,
+        sinal: item.sinal,
+        original1: item.original1,
+        temporario1: item.temporario1,
+        original2: item.original2,
+        temporario2: item.temporario2,
+        dataTurno: item.dataTurno,
+        turno: item.turno
+      });
+    });
+
+    // Sobrescreve com externo (snake_case)
+    if (externalHistory) {
+      externalHistory.forEach(item => {
+        const key = `${item.funcao}_${item.turno}`;
+        historyMap.set(key, {
+          funcao: item.funcao,
+          sinal: item.sinal,
+          original1: item.original_1,
+          temporario1: item.temporario_1,
+          original2: item.original_2,
+          temporario2: item.temporario_2,
+          dataTurno: item.data_turno,
+          turno: item.turno
+        });
+      });
+    }
+
+    return Array.from(historyMap.values());
+  }, [localHistoryData, externalHistory]);
+
   const currentScrapedFainas = useMemo(() => {
-    return new Set(scrapedData.map(d => d.Funcao.toUpperCase()));
+    return new Set(scrapedData.map(d => d.funcao.toUpperCase()));
   }, [scrapedData]);
 
   const activeShiftFromData = useMemo(() => {
     if (!scrapedData.length) return null;
-    const turnoStr = scrapedData[0].Data_Turno;
+    const turnoStr = scrapedData[0].data_turno;
     return SHIFT_ORDER.find(s => turnoStr.includes(s));
   }, [scrapedData]);
 
@@ -174,7 +214,7 @@ export function DynamicFainaCards({ scrapedData, selectedShift = 'live' }: Dynam
 
               <div className="px-4 pb-4 grid grid-cols-4 gap-2 w-full">
                 {SHIFT_ORDER.map((shiftName) => {
-                  const shiftData = historyData.find(d => 
+                  const shiftData = combinedHistory.find(d => 
                     d.funcao === pref.faina && d.dataTurno.includes(shiftName)
                   );
 

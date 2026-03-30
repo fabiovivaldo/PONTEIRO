@@ -67,6 +67,14 @@ export function FainaPreferencesModal({ availableFainas, trigger }: FainaPrefere
   const listRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const searchResults = useMemo(() => {
+    if (!newFaina.faina) return availableFainas.slice(0, 20);
+    const search = newFaina.faina.toUpperCase();
+    return availableFainas
+      .filter(f => f.toUpperCase().includes(search))
+      .slice(0, 20);
+  }, [newFaina.faina, availableFainas]);
+
   // Sincroniza com o AuthContext se o usuário estiver logado
   useEffect(() => {
     if (user && settings?.fainas_favoritas) {

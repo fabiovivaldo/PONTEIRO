@@ -6,6 +6,7 @@ import { AuthScreen } from '@/components/auth/auth-screen';
 import { DashboardContent } from '@/components/dashboard/dashboard-content';
 import { DataArchiver } from '@/components/dashboard/data-archiver';
 import { PonteiroData } from '@/lib/data-service';
+import { getLatestPonteiroData, syncAndFetchData } from '@/lib/actions';
 import { Loader2 } from 'lucide-react';
 
 interface DashboardWrapperProps {
@@ -16,11 +17,32 @@ interface DashboardWrapperProps {
 
 export function DashboardWrapper({ initialData, lastUpdatedIso, uniqueFainas }: DashboardWrapperProps) {
   const { user, loading } = useAuth();
-  const [data, setData] = React.useState(initialData);
+  const [liveData, setLiveData] = React.useState(initialData);
+  const [historyData, setHistoryData] = React.useState<PonteiroData[]>([]);
+  const [isSyncing, setIsSyncing] = React.useState(false);
 
+  // Sincroniza liveData com initialData quando o servidor envia novos dados (ex: após refresh)
+  React.useEffect(() => {
+    setLiveData(initialData);
+  }, [initialData]);
+
+  // Sincroniza e busca histórico quando o usuário loga
   React.useEffect(() => {
     if (user) {
-      fetchPonteiroDataFromSupabase(user.id).then(setData);
+      const initUserSession = async () => {
+        setIsSyncing(true);
+        try {
+          // Usa a ação de servidor para sincronizar e buscar
+          const history = await syncAndFetchData(user.id);
+          setHistoryData(history);
+        } catch (err) {
+          console.error("Erro ao inicializar sessão do usuário:", err);
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+
+      initUserSession();
     }
   }, [user]);
 
@@ -38,9 +60,10 @@ export function DashboardWrapper({ initialData, lastUpdatedIso, uniqueFainas }: 
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <DataArchiver data={data} />
+      <DataArchiver data={liveData} />
       <DashboardContent 
-        initialData={data} 
+        liveData={liveData}
+        historyData={historyData}
         lastUpdatedIso={lastUpdatedIso} 
         uniqueFainas={uniqueFainas} 
       />
