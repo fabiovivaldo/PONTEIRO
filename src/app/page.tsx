@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { fetchPonteiroData, PonteiroData, ViewMode } from '@/lib/data-service';
+import React, { useState, useEffect, useCallback } from 'react';
+import { fetchPonteiroData, PonteiroData } from '@/lib/data-service';
 import { DynamicFainaCards } from '@/components/dashboard/dynamic-faina-cards';
 import { PonteiroDataTable } from '@/components/dashboard/data-table';
 import { FainaPreferencesModal } from '@/components/dashboard/faina-preferences-modal';
 import { DataArchiver } from '@/components/dashboard/data-archiver';
+import { ViewMode } from '@/components/dashboard/dashboard-content';
 import { Settings, RefreshCw, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -35,7 +36,7 @@ export default function DashboardPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadData = React.useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {

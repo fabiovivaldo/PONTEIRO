@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
   variable: '--font-inter',
 });
 
@@ -13,14 +14,13 @@ export const metadata: Metadata = {
   description: 'Dynamic data extraction and intelligent analysis for OGMOPR Ponteiros.',
 };
 
-// Root layout for the application
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning className={inter.variable}>
+    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{
           __html: `
