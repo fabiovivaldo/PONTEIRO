@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeScript } from '@/components/theme-script';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,23 +22,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              try {
-                var theme = localStorage.getItem('theme');
-                if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-              } catch (e) {}
-            })();
-          `,
-        }} />
-      </head>
       <body className="font-sans antialiased bg-background text-foreground min-h-screen">
+        <ThemeScript />
         {children}
         <Toaster />
       </body>

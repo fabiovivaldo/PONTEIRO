@@ -38,22 +38,29 @@ function decodeHtmlEntities(text: string): string {
   return text.replace(/&[a-z0-9#]+;/gi, (match) => entities[match] || match);
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const url = 'https://www.ogmopgua.com.br/ogmopr/TempHtml/Ponteiros.html';
+  
+  console.log(`[API] Fetching data from: ${url}`);
   
   try {
     const response = await fetch(url, {
       next: { revalidate: 60 },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
+      },
+      signal: AbortSignal.timeout(10000) // 10 seconds timeout
     });
 
     if (!response.ok) {
-      return NextResponse.json({ error: `Failed to fetch: ${response.statusText}` }, { status: 500 });
+      console.error(`[API] Fetch failed with status ${response.status}: ${response.statusText}`);
+      return NextResponse.json({ error: `Failed to fetch: ${response.status} ${response.statusText}`.trim() }, { status: response.status });
     }
 
     const html = await response.text();
+    console.log(`[API] Successfully fetched HTML, length: ${html.length}`);
     
     const datePattern = /<h3>(.*?)<\/h3>/i;
     const dateMatch = datePattern.exec(html);
