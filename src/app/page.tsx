@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
 import { AuthForm } from '@/components/auth/auth-form';
 import { supabase } from '@/lib/supabase';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function DashboardPage() {
   const [data, setData] = useState<PonteiroData[]>([]);
@@ -94,6 +95,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button 
             variant="outline" 
             size="sm" 
